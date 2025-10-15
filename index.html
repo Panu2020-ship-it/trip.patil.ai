@@ -1,138 +1,598 @@
 <!doctype html>
-<html>
-  <head>
-    <title>Interactive Map Explorer</title>
+<html lang="en">
+<head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="stylesheet" href="/index.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rajasthan Hidden Gems Trip Planner</title>
+
+    <!-- Importmap for Google GenAI library -->
     <script type="importmap">
-      {
-        "imports": {
-          "@google/genai": "https://esm.sh/@google/genai@^0.7.0"
+    {
+      "imports": {
+        "@google/genai": "https://esm.sh/@google/genai@^0.7.0"
+      }
+    }
+    </script>
+
+    <!-- All CSS styles are embedded here -->
+    <style>
+      @import url(https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css);
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400..700;1,400..700&display=swap');
+
+      :root {
+        --primary-color: #e67e22;
+        --background-color: #fdf8f2;
+        --card-bg: #ffffff;
+        --text-primary: #333333;
+        --text-secondary: #555555;
+        --border-color: #f3dabc;
+        --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
+        --shadow-md: 0 5px 15px rgba(0, 0, 0, 0.08);
+        --border-radius: 12px;
+      }
+
+      * {
+        box-sizing: border-box;
+        padding: 0;
+        margin: 0;
+      }
+
+      html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        font-family: 'Inter', sans-serif;
+        color: var(--text-primary);
+        background-color: var(--background-color);
+      }
+
+      body {
+        overflow-y: auto;
+      }
+
+      .app-container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 24px;
+      }
+
+      .header {
+        text-align: center;
+        margin-bottom: 24px;
+      }
+
+      .header-image {
+        width: 100%;
+        height: 250px;
+        object-fit: cover;
+        border-radius: var(--border-radius);
+        margin-bottom: 24px;
+        box-shadow: var(--shadow-md);
+      }
+
+      .app-title {
+        font-family: 'Lora', serif;
+        font-size: 42px;
+        font-weight: 700;
+        color: var(--primary-color);
+        margin-bottom: 8px;
+      }
+
+      .app-subtitle {
+        font-size: 18px;
+        color: var(--text-secondary);
+      }
+
+      .search-container {
+        position: relative;
+        margin-bottom: 24px;
+      }
+      
+      .search-bar {
+        display: flex;
+        align-items: center;
+        background-color: var(--card-bg);
+        border-radius: var(--border-radius);
+        padding: 8px 12px;
+        border: 1px solid var(--border-color);
+        transition: all 0.2s;
+        box-shadow: var(--shadow-sm);
+      }
+      .search-bar:focus-within {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(230, 126, 34, 0.2);
+      }
+      #prompt-input {
+        flex: 1;
+        border: none;
+        outline: none;
+        font-size: 16px;
+        resize: none;
+        background: transparent;
+        color: var(--text-primary);
+        line-height: 1.5;
+        max-height: 120px;
+        overflow-y: auto;
+      }
+      #prompt-input::placeholder {
+        color: #aaa;
+      }
+      .search-button {
+        background-color: var(--primary-color);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        margin-left: 8px;
+        transition: background-color 0.2s;
+        position: relative;
+        flex-shrink: 0;
+      }
+      .search-button:hover {
+        background-color: #d35400;
+      }
+      .search-button.loading {
+        pointer-events: none;
+        background-color: #f39c12;
+      }
+      .search-button .fa-arrow-right {
+        transition: opacity 0.2s;
+      }
+      .search-button.loading .fa-arrow-right {
+        opacity: 0;
+      }
+      .search-button .spinner {
+        position: absolute;
+        width: 20px;
+        height: 20px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        border-top-color: white;
+        animation: spin 0.8s linear infinite;
+        opacity: 0;
+        transition: opacity 0.2s;
+      }
+      .search-button.loading .spinner {
+        opacity: 1;
+      }
+
+      #plan-container {
+        padding: 8px 0;
+      }
+      .placeholder-content {
+        text-align: center;
+        padding: 64px 32px;
+        color: var(--text-secondary);
+        background-color: rgba(255,255,255,0.5);
+        border: 2px dashed var(--border-color);
+        border-radius: var(--border-radius);
+      }
+      .placeholder-content .fas {
+        font-size: 48px;
+        margin-bottom: 16px;
+        color: var(--primary-color);
+        opacity: 0.7;
+      }
+      .placeholder-content h2 {
+        font-size: 20px;
+        font-weight: 600;
+        margin-bottom: 8px;
+        color: var(--text-primary);
+      }
+
+      .day-card {
+        background-color: var(--card-bg);
+        border-radius: var(--border-radius);
+        margin-bottom: 24px;
+        box-shadow: var(--shadow-sm);
+        border: 1px solid var(--border-color);
+        overflow: hidden;
+        transition: all 0.3s ease;
+      }
+      .day-card:hover {
+        box-shadow: var(--shadow-md);
+        transform: translateY(-5px);
+      }
+      
+      .day-header {
+        background-color: #fdf2e9;
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--border-color);
+      }
+      .day-header h2 {
+        font-family: 'Lora', serif;
+        font-size: 24px;
+        color: var(--primary-color);
+        margin: 0;
+      }
+      .day-header h2 .day-number {
+        font-weight: 400;
+        color: var(--text-secondary);
+      }
+
+      .day-content {
+        padding: 20px;
+      }
+
+      .activity-section {
+        margin-bottom: 20px;
+      }
+
+      .activity-section h3 {
+        font-size: 18px;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 10px;
+        padding-bottom: 5px;
+        border-bottom: 2px solid var(--border-color);
+        display: flex;
+        align-items: center;
+      }
+       .activity-section h3 i {
+        margin-right: 10px;
+        color: var(--primary-color);
+       }
+
+      .activity-section p {
+        font-size: 15px;
+        color: var(--text-secondary);
+        line-height: 1.6;
+        padding-left: 28px;
+      }
+      .recommendation {
+          background-color: #fefaf5;
+          border-left: 4px solid var(--primary-color);
+          padding: 15px;
+          margin-top: 15px;
+          border-radius: 0 8px 8px 0;
+      }
+      .recommendation p {
+        padding-left: 0;
+      }
+
+      .recommendation strong {
+        color: var(--primary-color);
+        font-weight: 600;
+      }
+
+      .spinner-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(253, 248, 242, 0.8);
+        backdrop-filter: blur(4px);
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .spinner-overlay.hidden {
+        display: none;
+      }
+      .spinner-inner {
+        width: 50px;
+        height: 50px;
+        border: 5px solid rgba(0, 0, 0, 0.1);
+        border-top-color: var(--primary-color);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+
+      .error {
+        color: #dc3545;
+        padding: 8px 0;
+        font-size: 14px;
+        text-align: center;
+      }
+      
+      .action-buttons {
+          display: flex;
+          justify-content: center;
+          gap: 16px;
+          margin-top: 24px;
+      }
+      
+      .action-button {
+          background: none;
+          border: 1px solid var(--border-color);
+          cursor: pointer;
+          font-size: 14px;
+          color: var(--text-secondary);
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 8px 16px;
+          border-radius: var(--border-radius);
+          transition: all 0.2s;
+      }
+      .action-button:hover {
+          background-color: #fff9f2;
+          color: var(--text-primary);
+          border-color: #e67e22;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
         }
       }
-    </script>
-  <link rel="stylesheet" href="/index.css">
+
+      @media (max-width: 600px) {
+        .app-container {
+          padding: 16px;
+        }
+        .app-title {
+          font-size: 32px;
+        }
+        .app-subtitle {
+          font-size: 16px;
+        }
+        .header-image {
+          height: 180px;
+        }
+      }
+    </style>
 </head>
-  <body>
-    <div id="app-layout" class="app-layout">
-      <!-- Sidebar for controls and results -->
-      <aside id="sidebar" class="sidebar">
-        <div class="sidebar-header">
-          <h1 class="app-title">Map Explorer</h1>
-          <div class="mode-toggle">
-            <label class="switch">
-              <input type="checkbox" id="planner-mode-toggle" />
-              <span class="slider round"></span>
-            </label>
-            <span class="mode-label">Day Planner Mode</span>
-          </div>
-          <div class="search-bar">
-            <i class="fas fa-search search-icon"></i>
-            <textarea
-              id="prompt-input"
-              placeholder="Explore places, history, events..."
-              rows="1"
-            ></textarea>
-            <button id="generate" class="search-button">
-              <i class="fas fa-arrow-right"></i>
-              <div class="spinner"></div>
-            </button>
-          </div>
-          <div
-            id="recent-searches-container"
-            class="recent-searches-container"
-          ></div>
-          <div class="error" id="error-message"></div>
+<body>
+    <div class="app-container">
+      <header class="header">
+        <img src="https://images.unsplash.com/photo-1599661046223-16781223947c?q=80&w=2070&auto=format&fit=crop" alt="A vibrant street in Rajasthan" class="header-image">
+        <h1 class="app-title">Rajasthan Hidden Gems</h1>
+        <p class="app-subtitle">Your personal AI guide to the secret spots of the Land of Kings</p>
+      </header>
+      
+      <div class="search-container">
+        <div class="search-bar">
+          <textarea
+            id="prompt-input"
+            placeholder="e.g., A 5-day spiritual trip focusing on ancient temples and local food..."
+            rows="1"
+          ></textarea>
+          <button id="generate" class="search-button" title="Generate Plan">
+            <i class="fas fa-arrow-right"></i>
+            <div class="spinner"></div>
+          </button>
         </div>
-
-        <div id="sidebar-content" class="sidebar-content">
-          <!-- Container for location cards (results) -->
-          <div id="card-container" class="card-container">
-            <div class="placeholder-content">
-              <i class="fas fa-map-marked-alt"></i>
-              <h2>Start Exploring</h2>
-              <p>Enter a prompt above to discover new places on the map.</p>
-            </div>
-          </div>
-
-          <!-- Container for the day plan timeline -->
-          <div id="timeline-view" class="timeline-view">
-            <div class="timeline-header">
-              <h3>Your Day Plan</h3>
-              <div class="timeline-actions">
-                <button id="export-plan" class="export-button">
-                  <i class="fas fa-download"></i> Export
-                </button>
-                <button id="close-timeline" class="close-button">
-                  <i class="fas fa-arrow-left"></i> Back
-                </button>
-              </div>
-            </div>
-            <div id="timeline" class="timeline"></div>
-          </div>
+        <div class="error" id="error-message"></div>
+      </div>
+      
+      <div id="plan-container">
+        <div class="placeholder-content">
+          <i class="fas fa-route"></i>
+          <h2>Your Adventure Awaits</h2>
+          <p>Tell me what you're looking for in your Rajasthan trip, and I'll craft a unique plan just for you.</p>
         </div>
-      </aside>
+      </div>
+      
+       <div class="action-buttons">
+          <button id="export-plan" class="action-button" style="display: none;">
+              <i class="fas fa-download"></i> Export Plan
+          </button>
+          <button id="reset-plan" class="action-button" style="display: none;">
+              <i class="fas fa-undo"></i> Start Over
+          </button>
+      </div>
 
-      <!-- Main content area for the map -->
-      <main id="map-wrapper" class="map-wrapper">
-        <div id="map"></div>
-        <button id="reset" class="map-button reset-button" title="Reset Map">
-          <i class="fas fa-undo"></i>
-        </button>
-        <button
-          id="sidebar-toggle"
-          class="map-button sidebar-toggle"
-          title="Toggle Sidebar"
-        >
-          <i class="fas fa-bars"></i>
-        </button>
-      </main>
     </div>
 
     <div id="spinner" class="hidden spinner-overlay">
       <div class="spinner-inner"></div>
     </div>
+    
+    <script type="module">
+      import { GoogleGenAI, Type } from '@google/genai';
+      
+      // --- Application State ---
+      let tripPlan = [];
 
-    <!-- Google Maps JavaScript API script -->
-    <script>
-      // Script to load the Google Maps JavaScript API asynchronously.
-      ((g) => {
-        var h,
-          a,
-          k,
-          p = 'The Google Maps JavaScript API',
-          c = 'google',
-          l = 'importLibrary',
-          q = '__ib__',
-          m = document,
-          b = window;
-        b = b[c] || (b[c] = {});
-        var d = b.maps || (b.maps = {}),
-          r = new Set(),
-          e = new URLSearchParams(),
-          u = () =>
-            h ||
-            (h = new Promise(async (f, n) => {
-              await (a = m.createElement('script'));
-              e.set('libraries', [...r] + '');
-              for (k in g)
-                e.set(
-                  k.replace(/[A-Z]/g, (t) => '_' + t[0].toLowerCase()),
-                  g[k],
-                );
-              e.set('callback', c + '.maps.' + q);
-              a.src = `https://maps.${c}apis.com/maps/api/js?` + e;
-              d[q] = f;
-              a.onerror = () => (h = n(Error(p + ' could not load.')));
-              a.nonce = m.querySelector('script[nonce]')?.nonce || '';
-              m.head.append(a);
-            }));
-        d[l]
-          ? console.warn(p + ' only loads once. Ignoring:', g)
-          : (d[l] = (f, ...n) => r.add(f) && u().then(() => d[l](f, ...n)));
-      })({key: 'AIzaSyCNXwnZayI7hxvA3huOB9d82myo1L-7j9Y', v: 'weekly'});
+      // --- DOM Element References ---
+      const generateButton = document.querySelector('#generate');
+      const planContainer = document.querySelector('#plan-container');
+      const spinner = document.querySelector('#spinner');
+      const errorMessage = document.querySelector('#error-message');
+      const promptInput = document.querySelector('#prompt-input');
+      const exportButton = document.querySelector('#export-plan');
+      const resetButton = document.querySelector('#reset-plan');
+
+      // --- Function Declaration for Gemini API ---
+      const createPlanFunctionDeclaration = {
+        name: 'create_trip_plan',
+        parameters: {
+          type: Type.OBJECT,
+          description: 'Creates a multi-day trip plan for Rajasthan.',
+          properties: {
+            days: {
+              type: Type.ARRAY,
+              description: 'An array of daily itinerary objects.',
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  day_number: { type: Type.NUMBER, description: 'The day number (1, 2, 3, etc.).' },
+                  title: { type: Type.STRING, description: 'A creative title for the day\'s theme.' },
+                  morning_activity: { type: Type.STRING, description: 'Description of the morning activity.' },
+                  afternoon_activity: { type: Type.STRING, description: 'Description of the afternoon activity.' },
+                  evening_activity: { type: Type.STRING, description: 'Description of the evening activity.' },
+                  hidden_gem_tip: { type: Type.STRING, description: 'A unique, offbeat tip or place for the day.' },
+                  food_recommendation: { type: Type.STRING, description: 'A specific local dish and where to find it.' },
+                  hostel_recommendation: { type: Type.STRING, description: 'Name and brief description of a budget-friendly hostel.' },
+                },
+                required: ['day_number', 'title', 'morning_activity', 'afternoon_activity', 'evening_activity', 'hidden_gem_tip', 'food_recommendation', 'hostel_recommendation'],
+              }
+            }
+          },
+          required: ['days'],
+        },
+      };
+
+      // --- Gemini System Instructions ---
+      const systemInstructions = `You are a Rajasthan travel expert specializing in hidden gems, offbeat experiences, and local culture. Your audience is backpackers and curious travelers looking for authentic adventures. Create a multi-day itinerary based on the user's prompt. For each day, you MUST provide distinct morning, afternoon, and evening activities. Crucially, you MUST also include specific, actionable recommendations for a 'hidden gem', a local 'food' experience, and a budget-friendly 'hostel'. Ensure the recommendations are unique and insightful. Use the 'create_trip_plan' function to structure your entire output. Do not respond with plain text.`;
+      
+      // --- Initialize Google AI Client ---
+      const ai = new GoogleGenAI({
+        apiKey: 'AIzaSyCqtmqdhpUJzQxqmFwegXiV1RWS5HINKvM',
+      });
+
+      // --- Core Functions ---
+      function restart() {
+          tripPlan = [];
+          planContainer.innerHTML = `<div class="placeholder-content"><i class="fas fa-route"></i><h2>Your Adventure Awaits</h2><p>Tell me what you're looking for in your Rajasthan trip, and I'll craft a unique plan just for you.</p></div>`;
+          errorMessage.innerHTML = '';
+          promptInput.value = '';
+          exportButton.style.display = 'none';
+          resetButton.style.display = 'none';
+      }
+
+      async function sendText(prompt) {
+        spinner.classList.remove('hidden');
+        errorMessage.innerHTML = '';
+        planContainer.innerHTML = '';
+        
+        try {
+          const response = await ai.models.generateContentStream({
+            // ERROR FIX: Changed model name to a stable, recent version to prevent 404 errors.
+            model: 'gemini-2.5-flash-preview-05-20',
+            contents: prompt,
+            systemInstruction: systemInstructions,
+            tools: [{ functionDeclarations: [createPlanFunctionDeclaration] }],
+          });
+
+          let aggregatedResponse = null;
+          for await (const chunk of response) {
+            const fns = chunk.functionCalls ?? [];
+            for (const fn of fns) {
+                if(fn.name === 'create_trip_plan') {
+                    // Assuming the full plan comes in one call
+                    aggregatedResponse = fn.args;
+                }
+            }
+          }
+
+          if (!aggregatedResponse || !aggregatedResponse.days || aggregatedResponse.days.length === 0) {
+            throw new Error('Could not generate a valid trip plan. Please try a different prompt.');
+          }
+
+          tripPlan = aggregatedResponse.days.sort((a,b) => a.day_number - b.day_number);
+          renderTripPlan(tripPlan);
+
+        } catch (e) {
+          errorMessage.innerHTML = `Error: ${e.message}`;
+          console.error('Error generating content:', e);
+          restart(); // Reset to placeholder on error
+        } finally {
+          spinner.classList.add('hidden');
+        }
+      }
+      
+      function renderTripPlan(days) {
+          planContainer.innerHTML = ''; // Clear previous content
+          if (!days || days.length === 0) {
+              restart();
+              return;
+          }
+          
+          days.forEach(day => {
+              const dayCard = document.createElement('div');
+              dayCard.className = 'day-card';
+              
+              dayCard.innerHTML = `
+                  <div class="day-header">
+                      <h2><span class="day-number">Day ${day.day_number}:</span> ${day.title}</h2>
+                  </div>
+                  <div class="day-content">
+                      <div class="activity-section">
+                          <h3><i class="fas fa-sun"></i>Morning</h3>
+                          <p>${day.morning_activity}</p>
+                      </div>
+                      <div class="activity-section">
+                          <h3><i class="fas fa-mountain-sun"></i>Afternoon</h3>
+                          <p>${day.afternoon_activity}</p>
+                      </div>
+                      <div class="activity-section">
+                          <h3><i class="fas fa-moon"></i>Evening</h3>
+                          <p>${day.evening_activity}</p>
+                      </div>
+                      <div class="activity-section">
+                        <h3><i class="fas fa-gem"></i>Hidden Gem</h3>
+                        <div class="recommendation"><p>${day.hidden_gem_tip}</p></div>
+                      </div>
+                      <div class="activity-section">
+                          <h3><i class="fas fa-utensils"></i>Food Stop</h3>
+                          <div class="recommendation"><p>${day.food_recommendation}</p></div>
+                      </div>
+                      <div class="activity-section">
+                          <h3><i class="fas fa-bed"></i>Hostel Stay</h3>
+                          <div class="recommendation"><p>${day.hostel_recommendation}</p></div>
+                      </div>
+                  </div>
+              `;
+              planContainer.appendChild(dayCard);
+          });
+          
+          exportButton.style.display = 'inline-flex';
+          resetButton.style.display = 'inline-flex';
+      }
+
+      function exportDayPlan() {
+          if (tripPlan.length === 0) return;
+          let content = '# Rajasthan Hidden Gems Trip Plan\n\n';
+          tripPlan.forEach(day => {
+              content += `## Day ${day.day_number}: ${day.title}\n\n`;
+              content += `**Morning:** ${day.morning_activity}\n\n`;
+              content += `**Afternoon:** ${day.afternoon_activity}\n\n`;
+              content += `**Evening:** ${day.evening_activity}\n\n`;
+              content += `**💎 Hidden Gem:** ${day.hidden_gem_tip}\n\n`;
+              content += `**🍲 Food Stop:** ${day.food_recommendation}\n\n`;
+              content += `**🛏️ Hostel Stay:** ${day.hostel_recommendation}\n\n`;
+              content += '---\n\n';
+          });
+          
+          const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'rajasthan-trip-plan.md';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+      }
+
+      // --- Event Listeners Setup ---
+      promptInput.addEventListener('input', () => {
+        promptInput.style.height = 'auto';
+        promptInput.style.height = `${promptInput.scrollHeight}px`;
+      });
+
+      promptInput.addEventListener('keydown', e => {
+        if (e.code === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          const prompt = promptInput.value.trim();
+          if (prompt) {
+            generateButton.classList.add('loading');
+            sendText(prompt);
+          }
+        }
+      });
+
+      generateButton.addEventListener('click', () => {
+        const prompt = promptInput.value.trim();
+        if (!prompt) return;
+        generateButton.classList.add('loading');
+        sendText(prompt);
+      });
+
+      resetButton.addEventListener('click', restart);
+      exportButton.addEventListener('click', exportDayPlan);
+
     </script>
-  <script type="module" src="/index.tsx"></script>
 </body>
 </html>
+
